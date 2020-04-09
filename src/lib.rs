@@ -176,7 +176,9 @@
 //!
 //!   [`anyhow`]: https://github.com/dtolnay/anyhow
 
-mod aserror;
+#![no_std]
+
+//mod aserror;
 mod display;
 
 pub use thiserror_impl::*;
@@ -184,6 +186,7 @@ pub use thiserror_impl::*;
 // Not public API.
 #[doc(hidden)]
 pub mod private {
-    pub use crate::aserror::AsDynError;
-    pub use crate::display::{DisplayAsDisplay, PathAsDisplay};
+    //pub use crate::aserror::AsDynError;
+    //pub use crate::display::{DisplayAsDisplay, PathAsDisplay};
+    pub use crate::display::DisplayAsDisplay;
 }
