@@ -1,7 +1,6 @@
 use crate::ast::{Enum, Field, Input, Struct};
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, quote_spanned, ToTokens};
-use syn::spanned::Spanned;
+use quote::{format_ident, quote, ToTokens};
 use syn::{DeriveInput, Member, PathArguments, Result, Type};
 
 pub fn derive(node: &DeriveInput) -> Result<TokenStream> {
@@ -17,6 +16,7 @@ fn impl_struct(input: Struct) -> TokenStream {
     let ty = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
+    /*
     let source_body = if input.attrs.transparent.is_some() {
         let only_field = &input.fields[0].member;
         Some(quote! {
@@ -85,18 +85,19 @@ fn impl_struct(input: Struct) -> TokenStream {
                 #body
             }
         }
-    });
+    });*/
 
     let display_body = if input.attrs.transparent.is_some() {
         let only_field = &input.fields[0].member;
         Some(quote! {
-            std::fmt::Display::fmt(&self.#only_field, __formatter)
+            core::fmt::Display::fmt(&self.#only_field, __formatter)
         })
     } else if let Some(display) = &input.attrs.display {
         let use_as_display = if display.has_bonus_display {
             Some(quote! {
                 #[allow(unused_imports)]
-                use thiserror::private::{DisplayAsDisplay, PathAsDisplay};
+                //use thiserror::private::{DisplayAsDisplay, PathAsDisplay};
+                use thiserror::private::DisplayAsDisplay;
             })
         } else {
             None
@@ -113,8 +114,8 @@ fn impl_struct(input: Struct) -> TokenStream {
     };
     let display_impl = display_body.map(|body| {
         quote! {
-            impl #impl_generics std::fmt::Display for #ty #ty_generics #where_clause {
-                fn fmt(&self, __formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            impl #impl_generics core::fmt::Display for #ty #ty_generics #where_clause {
+                fn fmt(&self, __formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
                     #body
                 }
             }
@@ -126,7 +127,7 @@ fn impl_struct(input: Struct) -> TokenStream {
         let from = from_field.ty;
         let body = from_initializer(from_field, backtrace_field);
         quote! {
-            impl #impl_generics std::convert::From<#from> for #ty #ty_generics #where_clause {
+            impl #impl_generics core::convert::From<#from> for #ty #ty_generics #where_clause {
                 #[allow(deprecated)]
                 fn from(source: #from) -> Self {
                     #ty #body
@@ -136,10 +137,10 @@ fn impl_struct(input: Struct) -> TokenStream {
     });
 
     quote! {
-        impl #impl_generics std::error::Error for #ty #ty_generics #where_clause {
-            #source_method
-            #backtrace_method
-        }
+        //impl #impl_generics std::error::Error for #ty #ty_generics #where_clause {
+        //    #source_method
+        //    #backtrace_method
+        //}
         #display_impl
         #from_impl
     }
@@ -149,6 +150,7 @@ fn impl_enum(input: Enum) -> TokenStream {
     let ty = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
+    /*
     let source_method = if input.has_source() {
         let arms = input.variants.iter().map(|variant| {
             let ident = &variant.ident;
@@ -253,6 +255,7 @@ fn impl_enum(input: Enum) -> TokenStream {
     } else {
         None
     };
+    */
 
     let display_impl = if input.has_display() {
         let use_as_display = if input.variants.iter().any(|v| {
@@ -263,7 +266,8 @@ fn impl_enum(input: Enum) -> TokenStream {
         }) {
             Some(quote! {
                 #[allow(unused_imports)]
-                use thiserror::private::{DisplayAsDisplay, PathAsDisplay};
+                //use thiserror::private::{DisplayAsDisplay, PathAsDisplay};
+                use thiserror::private::DisplayAsDisplay;
             })
         } else {
             None
@@ -281,7 +285,7 @@ fn impl_enum(input: Enum) -> TokenStream {
                         Member::Named(ident) => ident.clone(),
                         Member::Unnamed(index) => format_ident!("_{}", index),
                     };
-                    quote!(std::fmt::Display::fmt(#only_field, __formatter))
+                    quote!(core::fmt::Display::fmt(#only_field, __formatter))
                 }
             };
             let ident = &variant.ident;
@@ -291,8 +295,8 @@ fn impl_enum(input: Enum) -> TokenStream {
             }
         });
         Some(quote! {
-            impl #impl_generics std::fmt::Display for #ty #ty_generics #where_clause {
-                fn fmt(&self, __formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            impl #impl_generics core::fmt::Display for #ty #ty_generics #where_clause {
+                fn fmt(&self, __formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
                     #use_as_display
                     #[allow(unused_variables, deprecated)]
                     match #void_deref self {
@@ -312,7 +316,7 @@ fn impl_enum(input: Enum) -> TokenStream {
         let from = from_field.ty;
         let body = from_initializer(from_field, backtrace_field);
         Some(quote! {
-            impl #impl_generics std::convert::From<#from> for #ty #ty_generics #where_clause {
+            impl #impl_generics core::convert::From<#from> for #ty #ty_generics #where_clause {
                 #[allow(deprecated)]
                 fn from(source: #from) -> Self {
                     #ty::#variant #body
@@ -322,10 +326,10 @@ fn impl_enum(input: Enum) -> TokenStream {
     });
 
     quote! {
-        impl #impl_generics std::error::Error for #ty #ty_generics #where_clause {
-            #source_method
-            #backtrace_method
-        }
+        //impl #impl_generics core::error::Error for #ty #ty_generics #where_clause {
+        //    #source_method
+        //    #backtrace_method
+        //}
         #display_impl
         #(#from_impls)*
     }
@@ -352,7 +356,7 @@ fn from_initializer(from_field: &Field, backtrace_field: Option<&Field>) -> Toke
         let backtrace_member = &backtrace_field.member;
         if type_is_option(backtrace_field.ty) {
             quote! {
-                #backtrace_member: std::option::Option::Some(std::backtrace::Backtrace::capture()),
+                #backtrace_member: core::option::Option::Some(std::backtrace::Backtrace::capture()),
             }
         } else {
             quote! {

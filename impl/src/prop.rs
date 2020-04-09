@@ -1,6 +1,7 @@
 use crate::ast::{Enum, Field, Struct, Variant};
 use syn::{Member, Type};
 
+#[allow(dead_code)]
 impl Struct<'_> {
     pub(crate) fn from_field(&self) -> Option<&Field> {
         from_field(&self.fields)
@@ -15,6 +16,7 @@ impl Struct<'_> {
     }
 }
 
+#[allow(dead_code)]
 impl Enum<'_> {
     pub(crate) fn has_source(&self) -> bool {
         self.variants
