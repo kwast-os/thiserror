@@ -140,7 +140,7 @@ fn impl_struct(input: Struct) -> TokenStream {
         }
     });
 
-    let error_trait = spanned_error_trait(input.original);
+    //let error_trait = spanned_error_trait(input.original);
 
     quote! {
         //#[allow(unused_qualifications)]
@@ -334,7 +334,7 @@ fn impl_enum(input: Enum) -> TokenStream {
         })
     });
 
-    let error_trait = spanned_error_trait(input.original);
+    //let error_trait = spanned_error_trait(input.original);
 
     quote! {
         //#[allow(unused_qualifications)]
@@ -399,6 +399,7 @@ fn type_is_option(ty: &Type) -> bool {
     }
 }
 
+#[allow(dead_code)]
 fn spanned_error_trait(input: &DeriveInput) -> TokenStream {
     let vis_span = match &input.vis {
         Visibility::Public(vis) => Some(vis.pub_token.span()),
