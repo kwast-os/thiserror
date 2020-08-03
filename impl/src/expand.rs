@@ -1,7 +1,8 @@
 use crate::ast::{Enum, Field, Input, Struct};
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, ToTokens};
-use syn::{DeriveInput, Member, PathArguments, Result, Type};
+use quote::{format_ident, quote, quote_spanned, ToTokens};
+use syn::spanned::Spanned;
+use syn::{Data, DeriveInput, Member, PathArguments, Result, Type, Visibility};
 
 pub fn derive(node: &DeriveInput) -> Result<TokenStream> {
     let input = Input::from_syn(node)?;
@@ -114,7 +115,9 @@ fn impl_struct(input: Struct) -> TokenStream {
     };
     let display_impl = display_body.map(|body| {
         quote! {
+            #[allow(unused_qualifications)]
             impl #impl_generics core::fmt::Display for #ty #ty_generics #where_clause {
+                #[allow(clippy::used_underscore_binding)]
                 fn fmt(&self, __formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
                     #body
                 }
@@ -127,6 +130,7 @@ fn impl_struct(input: Struct) -> TokenStream {
         let from = from_field.ty;
         let body = from_initializer(from_field, backtrace_field);
         quote! {
+            #[allow(unused_qualifications)]
             impl #impl_generics core::convert::From<#from> for #ty #ty_generics #where_clause {
                 #[allow(deprecated)]
                 fn from(source: #from) -> Self {
@@ -136,8 +140,11 @@ fn impl_struct(input: Struct) -> TokenStream {
         }
     });
 
+    let error_trait = spanned_error_trait(input.original);
+
     quote! {
-        //impl #impl_generics std::error::Error for #ty #ty_generics #where_clause {
+        //#[allow(unused_qualifications)]
+        //impl #impl_generics #error_trait for #ty #ty_generics #where_clause {
         //    #source_method
         //    #backtrace_method
         //}
@@ -295,10 +302,11 @@ fn impl_enum(input: Enum) -> TokenStream {
             }
         });
         Some(quote! {
+            #[allow(unused_qualifications)]
             impl #impl_generics core::fmt::Display for #ty #ty_generics #where_clause {
                 fn fmt(&self, __formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
                     #use_as_display
-                    #[allow(unused_variables, deprecated)]
+                    #[allow(unused_variables, deprecated, clippy::used_underscore_binding)]
                     match #void_deref self {
                         #(#arms,)*
                     }
@@ -316,6 +324,7 @@ fn impl_enum(input: Enum) -> TokenStream {
         let from = from_field.ty;
         let body = from_initializer(from_field, backtrace_field);
         Some(quote! {
+            #[allow(unused_qualifications)]
             impl #impl_generics core::convert::From<#from> for #ty #ty_generics #where_clause {
                 #[allow(deprecated)]
                 fn from(source: #from) -> Self {
@@ -325,8 +334,11 @@ fn impl_enum(input: Enum) -> TokenStream {
         })
     });
 
+    let error_trait = spanned_error_trait(input.original);
+
     quote! {
-        //impl #impl_generics core::error::Error for #ty #ty_generics #where_clause {
+        //#[allow(unused_qualifications)]
+        //impl #impl_generics #error_trait for #ty #ty_generics #where_clause {
         //    #source_method
         //    #backtrace_method
         //}
@@ -385,4 +397,23 @@ fn type_is_option(ty: &Type) -> bool {
         PathArguments::AngleBracketed(bracketed) => bracketed.args.len() == 1,
         _ => false,
     }
+}
+
+fn spanned_error_trait(input: &DeriveInput) -> TokenStream {
+    let vis_span = match &input.vis {
+        Visibility::Public(vis) => Some(vis.pub_token.span()),
+        Visibility::Crate(vis) => Some(vis.crate_token.span()),
+        Visibility::Restricted(vis) => Some(vis.pub_token.span()),
+        Visibility::Inherited => None,
+    };
+    let data_span = match &input.data {
+        Data::Struct(data) => data.struct_token.span(),
+        Data::Enum(data) => data.enum_token.span(),
+        Data::Union(data) => data.union_token.span(),
+    };
+    let first_span = vis_span.unwrap_or(data_span);
+    let last_span = input.ident.span();
+    let path = quote_spanned!(first_span=> std::error::);
+    let error = quote_spanned!(last_span=> Error);
+    quote!(#path #error)
 }
