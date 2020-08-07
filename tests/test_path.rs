@@ -1,5 +1,5 @@
 #![deny(clippy::all, clippy::pedantic)]
-
+/*
 use ref_cast::RefCast;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
@@ -37,3 +37,4 @@ fn test_display() {
     assert("failed to read '/thiserror'", EnumPathBuf::Read(file));
     assert("failed to read '/thiserror'", StructPath::ref_cast(path));
 }
+*/

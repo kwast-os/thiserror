@@ -24,7 +24,7 @@ pub struct BoxedSource {
     #[source]
     source: Box<dyn StdError + Send + 'static>,
 }
-
+/*
 #[test]
 fn test_implicit_source() {
     let io = io::Error::new(io::ErrorKind::Other, "oh no!");
@@ -48,3 +48,4 @@ fn test_boxed_source() {
     let error = BoxedSource { source };
     error.source().unwrap().downcast_ref::<io::Error>().unwrap();
 }
+*/
